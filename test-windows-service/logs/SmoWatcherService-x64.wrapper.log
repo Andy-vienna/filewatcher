@@ -1,0 +1,22 @@
+2025-04-05 09:32:37,512 DEBUG - Starting WinSW in console mode
+2025-04-05 09:32:37,564 INFO  - Installing service 'SMO Watcher (SmoWatcher)'...
+2025-04-05 09:32:37,603 INFO  - Service 'SMO Watcher (SmoWatcher)' was installed successfully.
+2025-04-05 09:32:38,015 DEBUG - Starting WinSW in console mode
+2025-04-05 09:32:38,059 INFO  - Starting service 'SMO Watcher (SmoWatcher)'...
+2025-04-05 09:32:38,451 DEBUG - Starting WinSW in service mode
+2025-04-05 09:32:38,487 INFO  - Service 'SMO Watcher (SmoWatcher)' started successfully.
+2025-04-05 09:32:38,626 INFO  - Starting java -jar "SmoFileWatcher.jar"
+2025-04-05 09:32:38,703 INFO  - Started process 14116
+2025-04-05 09:32:38,724 DEBUG - Forwarding logs of the process System.Diagnostics.Process (java) to WinSW.RollingLogAppender
+2025-04-05 09:32:38,949 DEBUG - Starting WinSW in console mode
+2025-04-05 09:36:17,616 DEBUG - Starting WinSW in console mode
+2025-04-05 09:36:17,657 INFO  - Stopping service 'SMO Watcher (SmoWatcher)'...
+2025-04-05 09:36:17,666 INFO  - Service 'SMO Watcher (SmoWatcher)' stopped successfully.
+2025-04-05 09:36:17,668 INFO  - Stopping SmoWatcher
+2025-04-05 09:36:17,669 DEBUG - ProcessKill 14116
+2025-04-05 09:36:17,674 DEBUG - Stopping process 14116...
+2025-04-05 09:36:17,687 DEBUG - Process 14116 canceled with code -1073741510.
+2025-04-05 09:36:17,693 INFO  - Finished SmoWatcher
+2025-04-05 09:36:18,067 DEBUG - Starting WinSW in console mode
+2025-04-05 09:36:18,104 INFO  - Uninstalling service 'SMO Watcher (SmoWatcher)'...
+2025-04-05 09:36:18,112 INFO  - Service 'SMO Watcher (SmoWatcher)' was uninstalled successfully.

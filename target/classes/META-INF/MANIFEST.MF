@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Build-Jdk-Spec: 23
+Built-By: andre
+Built-Date: 2025-04-05T11:59:37Z
+Created-By: Maven Integration for Eclipse
+Version: 0.1.5-RELEASE
+
