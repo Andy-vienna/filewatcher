@@ -88,8 +88,12 @@ public class FileWatcher {
 					}
 
 					try {
-						openFile(config.getProperty("file.viewer"), fullPath.toString());
-						logger.info("Datei erkannt und geöffnet: " + extractFileName(fullPath.toString()));
+						String sResult = openFile(config.getProperty("file.viewer"), fullPath.toString());
+						if (sResult != null) {
+							logger.warning(sResult);
+						} else {
+							logger.info("Datei erkannt und geöffnet: " + extractFileName(fullPath.toString()));
+						}
 					} catch (IOException e) {
 						logger.severe("Fehler beim öffnen der Datei: " + e.getMessage());
 					}
@@ -157,12 +161,11 @@ public class FileWatcher {
 		return fileName.matches(".*\\.(tmp|log|dat|lck|smo|pdf)?");
 	}
 
-	private void openFile(String viewerPath, String filePath) throws IOException {
+	private String openFile(String viewerPath, String filePath) throws IOException {
 		File file = new File(filePath);
 
 		if (!file.exists() || file.length() == 0) {
-			logger.severe("❌ Datei existiert nicht oder ist leer: " + filePath);
-			return;
+			return "Datei existiert nicht oder ist leer: " + filePath;
 		}
 
 		List<String> command = Arrays.asList(viewerPath, filePath);
@@ -177,6 +180,7 @@ public class FileWatcher {
 				f.delete(); // Artefakte falls vorhanden löschen
 			}
 		}
+		return null;
 	}
 
 }
