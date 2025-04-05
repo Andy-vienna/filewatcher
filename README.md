@@ -3,7 +3,8 @@ Sobald nun nach Start des Tools eine Datei mit der angegebenen Endung in den Pfa
 
 aktuell getestet mit pdf und smo Dateien
 
-#############################################################################################################################
+######################################################################################################
+
 Small tool for monitoring a folder for new files. The config.properties file specifies the folder, the file extension, and the path to the viewer in which the file should be opened.
 
 Now, after starting the tool, as soon as a file with the specified extension is copied to the path, it will open in the viewer.
