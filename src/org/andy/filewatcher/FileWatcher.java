@@ -5,8 +5,8 @@ import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.net.URISyntaxException;
 import java.nio.channels.FileLock;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -18,10 +18,12 @@ import java.nio.file.WatchService;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import java.util.stream.Collectors;
 
 public class FileWatcher {
 
@@ -29,22 +31,42 @@ public class FileWatcher {
 
 	private static Properties config = new Properties();
 	private static Path folderToWatch = null;
-	private static String fileExtension = null;
+	private static String[] fileExtensions = null;
+	private static Set<String> artifactExtensions;
 
-	//###################################################################################################################################################
-	//###################################################################################################################################################
+	static {
+		try {
+			artifactExtensions = loadArtifactExtensions();
+		} catch (IOException e) {
+			e.printStackTrace(); // Oder eine bessere Fehlerbehandlung
+		}
+	}
 
+	// ###################################################################################################################################################
+	// ###################################################################################################################################################
+
+	/** Konstruktor erzeugen
+	 * @throws IOException
+	 */
+	public FileWatcher() throws IOException {
+		// Setze artifactExtensions im Konstruktor
+		FileWatcher.artifactExtensions = loadArtifactExtensions();
+	}
+
+	/**
+	 * @param args
+	 */
 	public static void main(String[] args) {
 
 		try {
 			setupLogger();
 			config = loadConfig();
-		} catch (IOException e) {
+		} catch (IOException | URISyntaxException e) {
 			e.printStackTrace();
 		}
 
 		folderToWatch = Paths.get(config.getProperty("watch.path"));
-		fileExtension = config.getProperty("watch.extension");
+		fileExtensions = config.getProperty("watch.extension").split(",");
 
 		try {
 			new FileWatcher().startWatching();
@@ -55,9 +77,17 @@ public class FileWatcher {
 
 	}
 
-	//###################################################################################################################################################
-	//###################################################################################################################################################
+	// ###################################################################################################################################################
+	// ###################################################################################################################################################
 
+	/**
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	/**
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
 	public void startWatching() throws IOException, InterruptedException {
 
 		WatchService watchService = FileSystems.getDefault().newWatchService();
@@ -76,13 +106,19 @@ public class FileWatcher {
 				WatchEvent<Path> ev = (WatchEvent<Path>) event;
 
 				Path fileName = ev.context();
-				String sFileName = fileName.toString().toLowerCase();
+				String sFileName = fileName.toString().toLowerCase(); // Hier konvertierst du den Dateinamen in
+				// Kleinbuchstaben
 
-				if (sFileName.endsWith(fileExtension)) {
+				boolean matchesExtension = Arrays.stream(fileExtensions).map(String::toLowerCase) // Konvertiere auch
+						// die Endungen in
+						// Kleinbuchstaben
+						.anyMatch(sFileName::endsWith);
+
+				if (matchesExtension || isArtifact(sFileName)) { // Prüfe zusätzlich auf Artefakte
 					Path fullPath = folderToWatch.resolve(fileName);
 
 					boolean bWaitSmo = isLocked(sFileName);
-					while(bWaitSmo) {
+					while (bWaitSmo) {
 						Thread.sleep(1000);
 						bWaitSmo = isLocked(sFileName);
 					}
@@ -95,9 +131,8 @@ public class FileWatcher {
 							logger.info("Datei erkannt und geöffnet: " + extractFileName(fullPath.toString()));
 						}
 					} catch (IOException e) {
-						logger.severe("Fehler beim öffnen der Datei: " + e.getMessage());
+						logger.severe("Fehler beim Öffnen der Datei: " + e.getMessage());
 					}
-
 				}
 			}
 
@@ -108,9 +143,12 @@ public class FileWatcher {
 		}
 	}
 
-	//###################################################################################################################################################
-	//###################################################################################################################################################
+	// ###################################################################################################################################################
+	// ###################################################################################################################################################
 
+	/**
+	 * @throws IOException
+	 */
 	private static void setupLogger() throws IOException {
 		FileHandler fileHandler = new FileHandler("filewatcher.log", true); // true = anhängen
 		fileHandler.setFormatter(new SimpleFormatter()); // einfache Textausgabe
@@ -119,31 +157,35 @@ public class FileWatcher {
 		logger.setUseParentHandlers(true); // true = auch in Konsole ausgeben
 	}
 
-	private static Properties loadConfig() throws IOException {
-		Properties props = new Properties();
+	/**
+	 * @return
+	 * @throws IOException
+	 * @throws URISyntaxException
+	 */
+	private static Properties loadConfig() throws IOException, URISyntaxException {
+		var props = new Properties();
 
-		// Pfad zum aktuellen .jar-Ordner ermitteln
-		String jarPath = FileWatcher.class
-				.getProtectionDomain()
-				.getCodeSource()
-				.getLocation()
-				.getPath();
+		// Ermittel die URI des JARs, das die FileWatcher-Klasse enthält.
+		var jarUri = FileWatcher.class.getProtectionDomain().getCodeSource().getLocation().toURI();
 
-		// Entferne führenden Slash (falls vorhanden)
-		if (jarPath.startsWith("/")) {
-			jarPath = jarPath.substring(1);
-		}
+		// Konvertiere die URI in einen Path – so werden Encodingprobleme (z. B.
+		// führende Slash) automatisch behoben.
+		var jarPath = Paths.get(jarUri);
+		var jarDir = jarPath.getParent();
 
-		Path jarDir = Paths.get(jarPath).getParent();
-		Path configPath = jarDir.resolve("config.properties");
+		var configPath = jarDir.resolve("config.properties");
 
-		try (InputStream in = Files.newInputStream(configPath)) {
+		try (var in = Files.newInputStream(configPath)) {
 			props.load(in);
 		}
 
 		return props;
 	}
 
+	/**
+	 * @param fileName
+	 * @return
+	 */
 	private static boolean isLocked(String fileName) {
 		try (RandomAccessFile randomAccessFile = new RandomAccessFile(fileName, "rw");
 				FileLock lock = randomAccessFile.getChannel().lock()) {
@@ -153,14 +195,69 @@ public class FileWatcher {
 		}
 	}
 
+	/**
+	 * @param filePath
+	 * @return
+	 */
 	private static String extractFileName(String filePath) {
 		return java.nio.file.Paths.get(filePath).getFileName().toString();
 	}
 
-	private boolean isArtifact(String fileName) {
-		return fileName.matches(".*\\.(tmp|log|dat|lck|smo|pdf)?");
+	/**
+	 * @return
+	 * @throws IOException
+	 */
+	private static Set<String> loadArtifactExtensions() throws IOException {
+		String extensions = config.getProperty("watch.extension");
+
+		// Debug-Ausgabe der geladenen Konfiguration
+		// System.out.println("Geladene Konfiguration (watch.extension): " +
+		// extensions);
+
+		if (extensions == null || extensions.isEmpty()) {
+			return Set.of(); // Falls keine Endungen angegeben sind, leer zurückgeben
+		}
+
+		// Entferne führende/abschließende Leerzeichen und stelle sicher, dass jede
+		// Endung mit einem Punkt beginnt
+		return Arrays.stream(extensions.split(",")).map(String::trim) // Entferne Leerzeichen
+				.map(e -> e.startsWith(".") ? e : "." + e) // Stelle sicher, dass jede Endung mit einem Punkt beginnt
+				.collect(Collectors.toSet());
 	}
 
+	/**
+	 * @param fileName
+	 * @return
+	 */
+	private boolean isArtifact(String fileName) {
+		// Konvertiere den Dateinamen und die Endungen in Kleinbuchstaben
+		String lowerCaseFileName = fileName.toLowerCase();
+
+		// Debug-Ausgabe, um zu sehen, welche Endungen überprüft werden
+		// System.out.println("Überprüfe Datei: " + fileName);
+
+		for (String extension : artifactExtensions) {
+			// Konvertiere die Endung ebenfalls in Kleinbuchstaben, um die Vergleichbarkeit
+			// zu gewährleisten
+			String lowerCaseExtension = extension.toLowerCase();
+
+			// Debug-Ausgabe der Endungen
+			// System.out.println("Vergleiche mit Endung: " + lowerCaseExtension);
+
+			if (lowerCaseFileName.endsWith(lowerCaseExtension)) {
+				// System.out.println("Passende Endung gefunden: " + lowerCaseExtension);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @param viewerPath
+	 * @param filePath
+	 * @return
+	 * @throws IOException
+	 */
 	private String openFile(String viewerPath, String filePath) throws IOException {
 		File file = new File(filePath);
 
@@ -174,14 +271,24 @@ public class FileWatcher {
 
 		pb.start(); // Datei mit angegebenem Viewer öffnen
 
+		// Überprüfe und lösche Artefakte im aktuellen Verzeichnis
 		File dir = new File(System.getProperty("user.dir"));
 		for (File f : dir.listFiles()) {
-			if (f.isFile() && f.length() == 0 && isArtifact(f.getName())) {
-				f.delete(); // Artefakte falls vorhanden löschen
+			if (f.isFile()) {
+				// System.out.println("Gefundene Datei: " + f.getName() + ", Größe: " +
+				// f.length());
+				if (f.length() == 0 && isArtifact(f.getName())) {
+					System.out.println("Artefakt gefunden: " + f.getName());
+					boolean deleted = f.delete(); // Versuche, das Artefakt zu löschen
+					if (deleted) {
+						System.out.println("Artefakt gelöscht: " + f.getName());
+					} else {
+						System.out.println("Fehler beim Löschen von " + f.getName());
+					}
+				}
 			}
 		}
 		return null;
 	}
 
 }
-
