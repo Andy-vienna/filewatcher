@@ -19,8 +19,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
@@ -45,14 +47,6 @@ public class FileWatcher {
 	// ###################################################################################################################################################
 	// ###################################################################################################################################################
 
-	/** Konstruktor erzeugen
-	 * @throws IOException
-	 */
-	public FileWatcher() throws IOException {
-		// Setze artifactExtensions im Konstruktor
-		FileWatcher.artifactExtensions = loadArtifactExtensions();
-	}
-
 	/**
 	 * @param args
 	 */
@@ -70,11 +64,19 @@ public class FileWatcher {
 
 		try {
 			new FileWatcher().startWatching();
-			logger.info("File Watcher überwacht: " + folderToWatch);
+			logger.info("FileWatcher überwacht: " + folderToWatch);
 		} catch (Exception e) {
 			logger.severe("Fehler bei Start der Überwachung: " + e.getMessage());
 		}
 
+	}
+
+	/** Konstruktor erzeugen
+	 * @throws IOException
+	 */
+	public FileWatcher() throws IOException {
+		// Setze artifactExtensions im Konstruktor
+		FileWatcher.artifactExtensions = loadArtifactExtensions();
 	}
 
 	// ###################################################################################################################################################
@@ -106,21 +108,21 @@ public class FileWatcher {
 				WatchEvent<Path> ev = (WatchEvent<Path>) event;
 
 				Path fileName = ev.context();
-				String sFileName = fileName.toString().toLowerCase(); // Hier konvertierst du den Dateinamen in
+				String fileNameLower = fileName.toString().toLowerCase(); // Hier konvertierst du den Dateinamen in
 				// Kleinbuchstaben
 
 				boolean matchesExtension = Arrays.stream(fileExtensions).map(String::toLowerCase) // Konvertiere auch
 						// die Endungen in
 						// Kleinbuchstaben
-						.anyMatch(sFileName::endsWith);
+						.anyMatch(fileNameLower::endsWith);
 
-				if (matchesExtension || isArtifact(sFileName)) { // Prüfe zusätzlich auf Artefakte
+				if (matchesExtension || isArtifact(fileNameLower)) { // Prüfe zusätzlich auf Artefakte
 					Path fullPath = folderToWatch.resolve(fileName);
 
-					boolean bWaitSmo = isLocked(sFileName);
+					boolean bWaitSmo = isLocked(fileNameLower);
 					while (bWaitSmo) {
 						Thread.sleep(1000);
-						bWaitSmo = isLocked(sFileName);
+						bWaitSmo = isLocked(fileNameLower);
 					}
 
 					try {
@@ -137,7 +139,7 @@ public class FileWatcher {
 			}
 
 			if (!key.reset()) {
-				logger.info("File Watcher beendet.");
+				logger.info("FileWatcher beendet.");
 				break;
 			}
 		}
@@ -150,11 +152,16 @@ public class FileWatcher {
 	 * @throws IOException
 	 */
 	private static void setupLogger() throws IOException {
-		FileHandler fileHandler = new FileHandler("filewatcher.log", true); // true = anhängen
-		fileHandler.setFormatter(new SimpleFormatter()); // einfache Textausgabe
-		logger.addHandler(fileHandler);
-		logger.setLevel(Level.WARNING); // ab Warnung loggen
-		logger.setUseParentHandlers(true); // true = auch in Konsole ausgeben
+		LogManager.getLogManager().reset();
+		Logger rootLogger = Logger.getLogger("");
+		ConsoleHandler consoleHandler = new ConsoleHandler();
+		consoleHandler.setLevel(Level.INFO);
+		rootLogger.addHandler(consoleHandler);
+
+		FileHandler fileHandler = new FileHandler("filemover.log", true);
+		fileHandler.setLevel(Level.ALL);
+		fileHandler.setFormatter(new SimpleFormatter());
+		rootLogger.addHandler(fileHandler);
 	}
 
 	/**
