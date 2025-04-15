@@ -6,6 +6,7 @@ import static java.nio.file.StandardWatchEventKinds.OVERFLOW;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.ServerSocket;
 import java.net.URISyntaxException;
 import java.nio.channels.FileLock;
 import java.nio.file.FileSystems;
@@ -31,6 +32,8 @@ public class FileWatcher {
 
 	private static final Logger logger = Logger.getLogger(FileWatcher.class.getName());
 
+	@SuppressWarnings("unused")
+	private static ServerSocket lockSocket;
 	private static Properties config = new Properties();
 	private static Path folderToWatch = null;
 	private static String[] fileExtensions = null;
@@ -52,6 +55,10 @@ public class FileWatcher {
 	 */
 	public static void main(String[] args) {
 
+		if (isAlreadyRunning()) {
+	        System.exit(0);
+	    }
+		
 		try {
 			setupLogger();
 			config = loadConfig();
@@ -63,8 +70,9 @@ public class FileWatcher {
 		fileExtensions = config.getProperty("watch.extension").split(",");
 
 		try {
+			TraySupport.initTray(); // Tray anzeigen
 			new FileWatcher().startWatching();
-			logger.info("FileWatcher überwacht: " + folderToWatch);
+			//logger.info("FileWatcher überwacht: " + folderToWatch);
 		} catch (Exception e) {
 			logger.severe("Fehler bei Start der Überwachung: " + e.getMessage());
 		}
@@ -82,10 +90,6 @@ public class FileWatcher {
 	// ###################################################################################################################################################
 	// ###################################################################################################################################################
 
-	/**
-	 * @throws IOException
-	 * @throws InterruptedException
-	 */
 	/**
 	 * @throws IOException
 	 * @throws InterruptedException
@@ -130,7 +134,8 @@ public class FileWatcher {
 						if (sResult != null) {
 							logger.warning(sResult);
 						} else {
-							logger.info("Datei erkannt und geöffnet: " + extractFileName(fullPath.toString()));
+							//logger.info("Datei erkannt und geöffnet: " + extractFileName(fullPath.toString()));
+							break;
 						}
 					} catch (IOException e) {
 						logger.severe("Fehler beim Öffnen der Datei: " + e.getMessage());
@@ -149,6 +154,19 @@ public class FileWatcher {
 	// ###################################################################################################################################################
 
 	/**
+	 * @return
+	 */
+	private static boolean isAlreadyRunning() {
+	    try {
+	        lockSocket = new ServerSocket(54555);
+	        return false;
+	    } catch (IOException e) {
+	    	logger.info("FileWatcher ist bereits gestartet.");
+	        return true;
+	    }
+	}
+	
+	/**
 	 * @throws IOException
 	 */
 	private static void setupLogger() throws IOException {
@@ -158,7 +176,7 @@ public class FileWatcher {
 		consoleHandler.setLevel(Level.INFO);
 		rootLogger.addHandler(consoleHandler);
 
-		FileHandler fileHandler = new FileHandler("filemover.log", true);
+		FileHandler fileHandler = new FileHandler("filewatcher.log", true);
 		fileHandler.setLevel(Level.ALL);
 		fileHandler.setFormatter(new SimpleFormatter());
 		rootLogger.addHandler(fileHandler);
@@ -206,6 +224,7 @@ public class FileWatcher {
 	 * @param filePath
 	 * @return
 	 */
+	@SuppressWarnings("unused")
 	private static String extractFileName(String filePath) {
 		return java.nio.file.Paths.get(filePath).getFileName().toString();
 	}

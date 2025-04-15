@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Build-Jdk-Spec: 23
 Built-By: andre
-Built-Date: 2025-04-14T14:45:36Z
+Built-Date: 2025-04-15T11:03:25Z
 Created-By: Maven Integration for Eclipse
-Version: 0.1.6-alpha.3
+Version: 1.0.1-auratronic
 
